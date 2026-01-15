@@ -1,490 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>🕹️ Hand Rush: Gesture 3D Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-        }
-        
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        
-        #gameCanvas {
-            display: block;
-        }
-        
-        #videoContainer {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 240px;
-            height: 180px;
-            border: 4px solid rgba(255,255,255,0.9);
-            border-radius: 15px;
-            overflow: hidden;
-            z-index: 100;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            background: rgba(0,0,0,0.2);
-        }
-        
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-        
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-            z-index: 100;
-            background: rgba(0,0,0,0.6);
-            padding: 20px 25px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.1);
-        }
-        
-        #ui div {
-            margin: 8px 0;
-        }
-        
-        #timer {
-            font-size: 42px;
-            margin-top: 15px;
-            color: #ffd43b;
-            text-shadow: 0 0 20px rgba(255,212,59,0.5);
-            font-weight: 900;
-        }
-        
-        #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            text-align: center;
-            z-index: 100;
-            background: rgba(0,0,0,0.6);
-            padding: 15px 25px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.1);
-            max-width: 600px;
-        }
-        
-        #instructions div {
-            margin: 5px 0;
-            font-size: 16px;
-        }
-        
-        #startScreen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85);
-            padding: 50px;
-            border-radius: 25px;
-            z-index: 200;
-            text-align: center;
-            color: white;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            border: 3px solid rgba(255,255,255,0.1);
-            min-width: 400px;
-        }
-        
-        #startScreen h1 {
-            margin-top: 0;
-            font-size: 48px;
-            background: linear-gradient(135deg, #4ecdc4, #51cf66);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(78,205,196,0.5);
-        }
-        
-        #startButton {
-            padding: 20px 50px;
-            font-size: 26px;
-            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            transition: all 0.3s ease;
-            margin-top: 30px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        #startButton:hover:not(:disabled) {
-            transform: scale(1.05) translateY(-2px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
-        }
-        
-        #startButton:disabled {
-            background: linear-gradient(135deg, #666, #444);
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        
-        #loadingStatus {
-            font-size: 18px;
-            margin: 25px 0;
-            min-height: 60px;
-        }
-        
-        #previewVideo {
-            width: 360px;
-            height: 270px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-radius: 15px;
-            transform: scaleX(-1);
-            margin-bottom: 25px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-        }
-        
-        .loading-spinner {
-            border: 5px solid rgba(78,205,196,0.3);
-            border-top: 5px solid #4ecdc4;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 15px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .status-item {
-            margin: 15px 0;
-            font-size: 17px;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-        }
-        
-        .status-icon {
-            display: inline-block;
-            margin-right: 10px;
-            font-size: 20px;
-        }
-        
-        .gesture-indicator {
-            position: absolute;
-            top: 230px;
-            right: 20px;
-            background: rgba(255,255,255,0.95);
-            padding: 15px 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            z-index: 100;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            color: #333;
-            font-size: 16px;
-        }
-        
-        #currentGesture {
-            color: #4ecdc4;
-            text-transform: uppercase;
-            font-size: 18px;
-        }
-        
-        #gameOverModal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 50px;
-            border-radius: 25px;
-            box-shadow: 0 30px 80px rgba(0,0,0,0.6);
-            z-index: 300;
-            display: none;
-            text-align: center;
-            color: white;
-            min-width: 450px;
-            border: 3px solid rgba(255,255,255,0.2);
-            animation: modalAppear 0.4s ease forwards;
-        }
-        
-        @keyframes modalAppear {
-            to {
-                transform: translate(-50%, -50%) scale(1);
+
+    <meta name="description"
+        content="Hand Rush is a 3D arcade game controlled by hand gesture. Play without touching. Collect orbs, avoid bombs, and test your reflexes.">
+    <meta name="keywords"
+        content="Hand Rush, gesture game, hand tracking game, 3D arcade game, camera game, AI hand tracking, ml5, three.js, browser game, PWA game">
+    <meta name="author" content="Pedro A. González">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <link rel="canonical" href="https://hand-rush-3d-game.onrender.com/">
+    <link rel="stylesheet" href="/assets/main.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" href="/icons/favicon.png">
+
+    <meta name="theme-color" content="#4ecdc4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hand Rush">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Hand Rush">
+    <meta property="og:title" content="Hand Rush – Play Without Touching">
+    <meta property="og:description"
+        content="A next-gen 3D arcade game controlled entirely by your hand gestures. No controller. No touch. Just motion.">
+    <meta property="og:url" content="https://hand-rush-3d-game.onrender.com/">
+    <meta property="og:image" content="https://hand-rush-3d-game.onrender.com/og/cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="en_US">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hand Rush – Gesture-Controlled Arcade">
+    <meta name="twitter:description"
+        content="Control a 3D arcade game using only your hands. Camera-powered. Fast. Addictive.">
+    <meta name="twitter:image" content="https://hand-rush-3d-game.onrender.com/og/cover.png">
+    <meta name="twitter:creator" content="@pedroagont">
+
+    <meta itemprop="name" content="Hand Rush">
+    <meta itemprop="description" content="A gesture-controlled 3D arcade game powered by hand tracking and AI.">
+    <meta itemprop="image" content="https://hand-rush-3d-game.onrender.com/og/cover.png">
+
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "VideoGame",
+            "name": "Hand Rush",
+            "description": "A gesture-controlled 3D arcade game where your hands are the controller.",
+            "genre": ["Arcade", "Action"],
+            "operatingSystem": "Web",
+            "applicationCategory": "GameApplication",
+            "url": "https://hand-rush-3d-game.onrender.com/",
+            "image": "https://hand-rush-3d-game.onrender.com/og/cover.png",
+            "author": {
+                "@type": "Person",
+                "name": "Pedro A. González"
             }
         }
-        
-        #gameOverModal h2 {
-            font-size: 52px;
-            margin: 0 0 30px 0;
-            text-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            animation: bounce 0.6s ease;
-        }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        #gameOverModal .stats {
-            background: rgba(255,255,255,0.15);
-            padding: 30px;
-            border-radius: 15px;
-            margin: 25px 0;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-        
-        #gameOverModal .stat-row {
-            font-size: 26px;
-            margin: 15px 0;
-            padding: 10px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-        }
-        
-        #gameOverModal .stat-row strong {
-            color: #ffd43b;
-            font-size: 32px;
-            text-shadow: 0 0 10px rgba(255,212,59,0.5);
-        }
-        
-        #playAgainButton {
-            padding: 18px 50px;
-            font-size: 22px;
-            background: linear-gradient(135deg, #4ecdc4, #51cf66);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            margin-top: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-            transition: all 0.3s ease;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        #playAgainButton:hover {
-            transform: scale(1.05) translateY(-2px);
-            box-shadow: 0 12px 35px rgba(0,0,0,0.5);
-        }
+    </script>
 
-        /* =========================
-   Mobile (portrait)
-   ========================= */
-@media (max-width: 768px) {
-    body {
-        overflow: hidden;
-    }
 
-    /* Video camera preview */
-    #videoContainer {
-        top: 10px;
-        right: 10px;
-        width: 120px;
-        height: 160px;
-        border-width: 3px;
-        border-radius: 12px;
-    }
-
-    /* Gesture indicator under camera */
-    .gesture-indicator {
-        top: 180px;
-        right: 10px;
-        padding: 10px 14px;
-        font-size: 14px;
-    }
-
-    #currentGesture {
-        font-size: 15px;
-    }
-
-    /* HUD */
-    #ui {
-        top: 10px;
-        left: 10px;
-        padding: 12px 14px;
-        font-size: 16px;
-        border-radius: 12px;
-    }
-
-    #timer {
-        font-size: 28px;
-        margin-top: 8px;
-    }
-
-    /* Instructions */
-    #instructions {
-        bottom: 100px;
-        padding: 12px 16px;
-        width: 80vw;
-    }
-
-    #instructions div {
-        font-size: 14px;
-    }
-
-    /* Start screen */
-    #startScreen {
-        width: 80vw;
-        min-width: unset;
-        padding: 1em;
-        border-radius: 20px;
-        max-height: 80vh;
-        margin-top: -2em;
-    }
-
-    #startScreen h1 {
-        font-size: 24px;
-    }
-
-    #previewVideo {
-        width: 90%;
-        height: auto;
-        max-height: 20vh;
-    }
-
-    #loadingStatus {
-        font-size: 15px;
-        margin: 15px 0;
-    }
-
-    .status-item {
-        font-size: 14px;
-        padding: 8px;
-    }
-
-    #startButton {
-        width: 100%;
-        font-size: 18px;
-        padding: 14px;
-        margin-top: 20px;
-    }
-
-    /* Game over modal */
-    #gameOverModal {
-        width: 80vw;
-        min-width: unset;
-        padding: 1em;
-    }
-
-    #gameOverModal h2 {
-        font-size: 24px;
-    }
-
-    #gameOverModal .stat-row {
-        font-size: 18px;
-    }
-
-    #gameOverModal .stat-row strong {
-        font-size: 22px;
-    }
-
-    #playAgainButton {
-        width: 100%;
-        font-size: 18px;
-        padding: 14px;
-    }
-}
-
-/* =========================
-   Small phones (iPhone SE, etc.)
-   ========================= */
-@media (max-width: 380px) {
-    #videoContainer {
-        width: 100px;
-        height: 135px;
-    }
-
-    #ui {
-        font-size: 14px;
-    }
-
-    #timer {
-        font-size: 24px;
-    }
-
-    #instructions div {
-        font-size: 13px;
-    }
-}
-
-/* =========================
-   Mobile landscape
-   ========================= */
-@media (max-height: 500px) and (orientation: landscape) {
-    #videoContainer {
-        width: 100px;
-        height: 100px;
-    }
-
-    .gesture-indicator {
-        top: 120px;
-    }
-
-    #instructions {
-        display: none;
-    }
-
-    #startScreen {
-        padding: 20px;
-    }
-
-    #previewVideo {
-        max-height: 30vh;
-    }
-}
-
-    </style>
 </head>
+
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
-        
+
         <div id="videoContainer" style="display: none;">
             <video id="video" autoplay muted playsinline></video>
         </div>
-        
+
         <div id="ui" style="display: none;">
             <div>💎 Score: <span id="score">0</span></div>
             <div>⭐ Collected: <span id="collected">0</span></div>
             <div id="timer">1:00</div>
         </div>
-        
+
         <div id="instructions" style="display: none;">
-            <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">🎮 Collect as many colored orbs as you can!</div>
+            <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">🎮 Collect as many colored orbs as you
+                can!</div>
             <div style="color: #ff6b6b; font-size: 18px;">⚠️ Avoid the black bombs! 💣</div>
             <div style="margin-top: 10px;">👆 Point up: Forward | ✋ Open palm: Back | 👉 Point: Turn</div>
         </div>
-        
+
         <div class="gesture-indicator" id="gestureIndicator" style="display: none;">
             🎯 Gesture: <span id="currentGesture">None</span>
         </div>
-        
+
         <div id="startScreen">
             <h1>🕹️ Hand Rush</h1>
             <video id="previewVideo" autoplay muted playsinline></video>
@@ -502,7 +113,7 @@
             </div>
             <button id="startButton" disabled>Loading...</button>
         </div>
-        
+
         <div id="gameOverModal">
             <h2>🎉 Time's Up! 🎉</h2>
             <div class="stats">
@@ -517,555 +128,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
 
+    <script src="assets/script.js"></script>
+
     <script>
-        // Game variables
-        let scene, camera, renderer, player, orbs = [];
-        let handpose, video, predictions = [];
-        let gameStarted = false;
-        let score = 0;
-        let orbsCollected = 0;
-        let bombsHit = 0;
-        let currentGesture = 'none';
-        let gameTime = 30;
-        let timerInterval = null;
-        let modelLoaded = false;
-        let cameraLoaded = false;
-        // let lastGesture = 'none';
-
-        
-        // Game colors
-        const colors = {
-            red: 0xff6b6b,
-            blue: 0x4dabf7,
-            green: 0x51cf66,
-            yellow: 0xffd43b,
-            purple: 0xcc5de8,
-            bomb: 0x000000
-        };
-        
-        const colorNames = ['red', 'blue', 'green', 'yellow', 'purple'];
-
-        // Audio setup
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const sounds = {
-    start: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-    collect: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    bomb: 'https://cdn.pixabay.com/audio/2025/11/15/audio_721173197e.mp3',
-    tick: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
-    gameOver: 'https://cdn.pixabay.com/audio/2021/08/04/audio_382b1ec1f7.mp3',
-    // whoosh: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3',
-    bgMusic: 'https://cdn.pixabay.com/audio/2025/05/13/audio_e03906b021.mp3'
-};
-
-let audioBuffers = {};
-let bgMusicSource = null;
-
-// Load all sounds
-async function loadSounds() {
-    for (let [key, url] of Object.entries(sounds)) {
-        try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            audioBuffers[key] = await audioContext.decodeAudioData(arrayBuffer);
-        } catch (error) {
-            console.log(`Failed to load ${key} sound:`, error);
-        }
-    }
-}
-
-function playSound(soundName, volume = 1, rate = 1) {
-    if (!audioBuffers[soundName]) return;
-    
-    const source = audioContext.createBufferSource();
-    const gainNode = audioContext.createGain();
-    
-    source.buffer = audioBuffers[soundName];
-    source.playbackRate.value = rate;
-    gainNode.gain.value = volume;
-    
-    source.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    source.start(0);
-    
-    return source;
-}
-
-function playBgMusic() {
-    if (!audioBuffers.bgMusic || bgMusicSource) return;
-    
-    bgMusicSource = audioContext.createBufferSource();
-    const gainNode = audioContext.createGain();
-    
-    bgMusicSource.buffer = audioBuffers.bgMusic;
-    bgMusicSource.loop = true;
-    gainNode.gain.value = 0.3;
-    
-    bgMusicSource.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    bgMusicSource.start(0);
-}
-
-function stopBgMusic() {
-    if (bgMusicSource) {
-        bgMusicSource.stop();
-        bgMusicSource = null;
-    }
-}
-
-// Initialize audio
-loadSounds();
-        
-        // Initialize the game
-        function init() {
-            // Create scene with fog for depth
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 20, 60);
-            
-            // Create camera with cinematic FOV
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 8, 12);
-            
-            // Create renderer with better quality
-            renderer = new THREE.WebGLRenderer({ 
-                canvas: document.getElementById('gameCanvas'),
-                antialias: true
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
             });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-            renderer.shadowMap.enabled = false;
-            renderer.shadowMap.type = THREE.BasicShadowMap;
-            
-            // Enhanced lighting
-            const ambientLight = new THREE.AmbientLight(0x8ec5fc, 0.5);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffeaa7, 1);
-            directionalLight.position.set(10, 15, 5);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.camera.left = -25;
-            directionalLight.shadow.camera.right = 25;
-            directionalLight.shadow.camera.top = 25;
-            directionalLight.shadow.camera.bottom = -25;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            scene.add(directionalLight);
-            
-            // Add rim light for cinematic effect
-            const rimLight = new THREE.DirectionalLight(0x74b9ff, 0.5);
-            rimLight.position.set(-5, 5, -5);
-            scene.add(rimLight);
-            
-            // Create player with glow effect
-            const playerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const playerMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0x00ff00,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.4,
-                shininess: 100
-            });
-            player = new THREE.Mesh(playerGeometry, playerMaterial);
-            player.position.y = 0.5;
-            player.castShadow = true;
-            scene.add(player);
-            
-            // Add player glow ring
-            const ringGeometry = new THREE.TorusGeometry(0.7, 0.05, 16, 50);
-            const ringMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x00ff00,
-                transparent: true,
-                opacity: 0.6
-            });
-            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-            ring.rotation.x = Math.PI / 2;
-            ring.position.y = 0.1;
-            player.add(ring);
-            
-            // Create ground with grid pattern
-            const groundGeometry = new THREE.PlaneGeometry(50, 50);
-            const groundMaterial = new THREE.MeshLambertMaterial({ 
-                color: 0x74b816,
-                emissive: 0x74b816,
-                emissiveIntensity: 0.1
-            });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            // Add grid lines
-            const gridHelper = new THREE.GridHelper(50, 50, 0x82c91e, 0x82c91e);
-            gridHelper.material.opacity = 0.3;
-            gridHelper.material.transparent = true;
-            scene.add(gridHelper);
-            
-            // Create initial orbs
-            spawnOrbs();
-            
-            // Start game loop
-            animate();
         }
-        
-        // Spawn random orbs including bombs
-        function spawnOrbs() {
-            orbs.forEach(orb => scene.remove(orb));
-            orbs = [];
-            
-            for (let i = 0; i < 15; i++) {
-                spawnSingleOrb();
-            }
-        }
-        
-        // Spawn a single orb with enhanced visuals
-        function spawnSingleOrb() {
-            const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            let colorName, isBomb = false;
-            
-            if (Math.random() < 0.2) {
-                colorName = 'bomb';
-                isBomb = true;
-            } else {
-                colorName = colorNames[Math.floor(Math.random() * colorNames.length)];
-            }
-            
-            const orbMaterial = new THREE.MeshPhongMaterial({ 
-                color: colors[colorName],
-                emissive: colors[colorName],
-                emissiveIntensity: isBomb ? 0.9 : 0.5,
-                shininess: 100,
-                transparent: true,
-                opacity: 0.95
-            });
-            
-            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-            orb.position.x = (Math.random() - 0.5) * 40;
-            orb.position.y = 0.5;
-            orb.position.z = (Math.random() - 0.5) * 40;
-            orb.userData = { color: colorName, isBomb: isBomb };
-            orb.castShadow = true;
-            
-            // Add particle ring around orbs
-            const particleRing = new THREE.TorusGeometry(0.4, 0.02, 16, 50);
-            const particleMaterial = new THREE.MeshBasicMaterial({ 
-                color: colors[colorName],
-                transparent: true,
-                opacity: 0.5
-            });
-            const ring = new THREE.Mesh(particleRing, particleMaterial);
-            ring.rotation.x = Math.PI / 2;
-            orb.add(ring);
-            
-            scene.add(orb);
-            orbs.push(orb);
-        }
-        
-        // Setup camera and ML5 handpose
-        async function setupCamera() {
-            const previewVideo = document.getElementById('previewVideo');
-            video = document.getElementById('video');
-            
-            try {
-                document.getElementById('cameraText').textContent = 'Camera: Requesting access...';
-                
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user', width: 640, height: 480 } 
-                });
-                
-                previewVideo.srcObject = stream;
-                video.srcObject = stream;
-                
-                cameraLoaded = true;
-                document.getElementById('cameraStatus').textContent = '✅';
-                document.getElementById('cameraText').textContent = 'Camera: Ready';
-                document.getElementById('loadingStatus').innerHTML = '<div>Loading AI hand pose model...</div>';
-                document.getElementById('modelText').textContent = 'Hand Pose Model: Loading...';
-                
-                handpose = ml5.handpose(video, modelReady);
-                playBgMusic();
-
-                
-                function modelReady() {
-                    console.log('Handpose model loaded');
-                    modelLoaded = true;
-                    document.getElementById('modelStatus').textContent = '✅';
-                    document.getElementById('modelText').textContent = 'Hand Pose Model: Ready';
-                    document.getElementById('loadingStatus').innerHTML = '<div style="color: #51cf66; font-size: 22px; font-weight: bold;">✅ Ready to play!</div>';
-                    
-                    const startBtn = document.getElementById('startButton');
-                    startBtn.disabled = false;
-                    startBtn.textContent = '🚀 Start Game';
-                    
-                    handpose.on('predict', (results) => {
-                        predictions = results;
-                        processHandGesture();
-                    });
-                }
-                
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                document.getElementById('loadingStatus').innerHTML = '<div style="color: #ff6b6b;">❌ Camera access denied. Please allow camera access and refresh.</div>';
-                document.getElementById('cameraStatus').textContent = '❌';
-                document.getElementById('cameraText').textContent = 'Camera: Access Denied';
-            }
-        }
-        
-        // Process hand gestures
-        function processHandGesture() {
-            if (predictions.length > 0 && gameStarted) {
-                const hand = predictions[0];
-                const landmarks = hand.landmarks;
-                const gesture = detectGesture(landmarks);
-                currentGesture = gesture;
-                // if (gesture !== lastGesture && gesture !== 'none') {
-                //     playSound('whoosh', 0.2);
-                //     lastGesture = gesture;
-                // }
-                document.getElementById('currentGesture').textContent = gesture.replace('_', ' ');
-                movePlayer(gesture);
-            }
-        }
-        
-        // Simple gesture detection
-        function detectGesture(landmarks) {
-            const wrist = landmarks[0];
-            const indexTip = landmarks[8];
-            const indexPip = landmarks[6];
-            const middleTip = landmarks[12];
-            
-            if (indexTip[1] < indexPip[1] - 20 && middleTip[1] > indexPip[1]) {
-                return 'point_up';
-            }
-            
-            const fingersUp = [
-                landmarks[4][1] < landmarks[3][1],
-                landmarks[8][1] < landmarks[6][1],
-                landmarks[12][1] < landmarks[10][1],
-                landmarks[16][1] < landmarks[14][1],
-                landmarks[20][1] < landmarks[18][1]
-            ].filter(f => f).length;
-            
-            if (fingersUp >= 4) {
-                return 'open_palm';
-            }
-            
-            if (indexTip[1] < indexPip[1] - 10) {
-                if (indexTip[0] < wrist[0] - 50) {
-                    return 'point_right';
-                } else if (indexTip[0] > wrist[0] + 50) {
-                    return 'point_left';
-                }
-            }
-            
-            return 'none';
-        }
-        
-        // Move player based on gesture
-        function movePlayer(gesture) {
-            const speed = 0.25;
-            
-            switch (gesture) {
-                case 'point_up':
-                    player.position.z -= speed;
-                    break;
-                case 'open_palm':
-                    player.position.z += speed;
-                    break;
-                case 'point_right':
-                    player.position.x += speed;
-                    break;
-                case 'point_left':
-                    player.position.x -= speed;
-                    break;
-            }
-            
-            player.position.x = Math.max(-20, Math.min(20, player.position.x));
-            player.position.z = Math.max(-20, Math.min(20, player.position.z));
-        }
-        
-        // Check collisions
-        function checkCollisions() {
-            for (let i = orbs.length - 1; i >= 0; i--) {
-                const orb = orbs[i];
-                const distance = player.position.distanceTo(orb.position);
-                
-                if (distance < 0.8) {
-                    scene.remove(orb);
-                    orbs.splice(i, 1);
-                    
-                    if (orb.userData.isBomb) {
-                        score = Math.max(0, score - 5);
-                        bombsHit++;
-                        player.material.color.setHex(0xff0000);
-                        player.material.emissive.setHex(0xff0000);
-                        playSound('bomb', 0.7);
-                        setTimeout(() => {
-                            player.material.color.setHex(0x00ff00);
-                            player.material.emissive.setHex(0x00ff00);
-                        }, 200);
-                    } else {
-                        score += 10;
-                        orbsCollected++;
-                        player.material.color.setHex(0xffff00);
-                        player.material.emissive.setHex(0xffff00);
-                        const pitchMap = { red: 1.0, blue: 1.2, green: 1.4, yellow: 1.6, purple: 1.8 };
-                        playSound('collect', 0.6, pitchMap[orb.userData.color] || 1.0);
-                        setTimeout(() => {
-                            player.material.color.setHex(0x00ff00);
-                            player.material.emissive.setHex(0x00ff00);
-                            
-                        }, 200);
-                    }
-                    
-                    document.getElementById('score').textContent = score;
-                    document.getElementById('collected').textContent = orbsCollected;
-                    spawnSingleOrb();
-                }
-            }
-        }
-        
-        // Start game timer
-        function startTimer() {
-            gameTime = 30;
-            updateTimerDisplay();
-            
-            timerInterval = setInterval(() => {
-                gameTime--;
-                updateTimerDisplay();
-                
-                if (gameTime <= 0) {
-                    endGame();
-                }
-            }, 1000);
-        }
-        
-        // Update timer display
-        function updateTimerDisplay() {
-            const minutes = Math.floor(gameTime / 60);
-            const seconds = gameTime % 60;
-            document.getElementById('timer').textContent = 
-                `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
-            if (gameTime <= 10) {
-                document.getElementById('timer').style.color = '#ff6b6b';
-            } else {
-                document.getElementById('timer').style.color = '#ffd43b';
-            }
-
-            // Tick sound at 10 seconds
-            if (gameTime === 10) {
-                playSound('tick', 0.5);
-            }
-            // Urgent ticking from 5 seconds
-            if (gameTime <= 5 && gameTime > 0) {
-                playSound('tick', 0.4, 1.5);
-            }
-        }
-        
-        // End game
-        function endGame() {
-            gameStarted = false;
-            clearInterval(timerInterval);
-            
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('finalCollected').textContent = orbsCollected;
-            document.getElementById('finalBombs').textContent = bombsHit;
-            document.getElementById('gameOverModal').style.display = 'block';
-            stopBgMusic();
-            playSound('gameOver', 0.6);
-        }
-        
-        // Reset game
-        function resetGame() {
-            score = 0;
-            orbsCollected = 0;
-            bombsHit = 0;
-            gameTime = 30;
-            
-            document.getElementById('score').textContent = '0';
-            document.getElementById('collected').textContent = '0';
-            document.getElementById('timer').textContent = '0:30';
-            player.position.set(0, 0.5, 0);
-            player.material.color.setHex(0x00ff00);
-            player.material.emissive.setHex(0x00ff00);
-            
-            spawnOrbs();
-            document.getElementById('gameOverModal').style.display = 'none';
-            
-            gameStarted = true;
-            startTimer();
-            playBgMusic()
-        }
-        
-        // Animation loop with cinematic camera movement
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if (gameStarted) {
-                orbs.forEach((orb, index) => {
-                    orb.position.y = 0.5 + Math.sin(Date.now() * 0.003 + index) * 0.3;
-                    orb.rotation.y += 0.03;
-                    orb.rotation.x += 0.01;
-                    
-                    // Rotate particle ring
-                    if (orb.children[0]) {
-                        orb.children[0].rotation.z += 0.02;
-                    }
-                    
-                    if (orb.userData.isBomb) {
-                        const pulse = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
-                        orb.material.emissiveIntensity = 0.6 + pulse * 0.6;
-                    }
-                });
-                
-                // Smooth camera follow with slight lag
-                camera.position.x += (player.position.x - camera.position.x) * 0.1;
-                camera.position.z += (player.position.z + 12 - camera.position.z) * 0.1;
-                camera.lookAt(player.position.x, 0, player.position.z);
-                
-                // Rotate player's ring
-                if (player.children[0]) {
-                    player.children[0].rotation.z += 0.05;
-                }
-                
-                checkCollisions();
-            }
-            
-            renderer.render(scene, camera);
-        }
-        
-        // Start game
-        document.getElementById('startButton').addEventListener('click', () => {
-            console.log('Game started');
-            
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('ui').style.display = 'block';
-            document.getElementById('instructions').style.display = 'block';
-            document.getElementById('videoContainer').style.display = 'block';
-            document.getElementById('gestureIndicator').style.display = 'block';
-            
-            gameStarted = true;
-
-            playSound('start', 0.5);
-            startTimer();
-        });
-        
-        // Play again button
-        document.getElementById('playAgainButton').addEventListener('click', () => {
-            resetGame();
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-        
-        // Initialize the game
-        init();
-        
-        // Start loading camera and model immediately
-        setupCamera();
     </script>
+
 </body>
+
 </html>

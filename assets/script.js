@@ -1,0 +1,576 @@
+// Game variables
+let scene,
+  camera,
+  renderer,
+  player,
+  orbs = [];
+let handpose,
+  video,
+  predictions = [];
+let gameStarted = false;
+let score = 0;
+let orbsCollected = 0;
+let bombsHit = 0;
+let currentGesture = "none";
+let gameTime = 30;
+let timerInterval = null;
+let modelLoaded = false;
+let cameraLoaded = false;
+// let lastGesture = 'none';
+
+// Game colors
+const colors = {
+  red: 0xff6b6b,
+  blue: 0x4dabf7,
+  green: 0x51cf66,
+  yellow: 0xffd43b,
+  purple: 0xcc5de8,
+  bomb: 0x000000,
+};
+
+const colorNames = ["red", "blue", "green", "yellow", "purple"];
+
+// Audio setup
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const sounds = {
+  start: "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3",
+  collect: "https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3",
+  bomb: "https://cdn.pixabay.com/audio/2025/11/15/audio_721173197e.mp3",
+  tick: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+  gameOver: "https://cdn.pixabay.com/audio/2021/08/04/audio_382b1ec1f7.mp3",
+  // whoosh: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3',
+  bgMusic: "https://cdn.pixabay.com/audio/2025/05/13/audio_e03906b021.mp3",
+};
+
+let audioBuffers = {};
+let bgMusicSource = null;
+
+// Load all sounds
+async function loadSounds() {
+  for (let [key, url] of Object.entries(sounds)) {
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      audioBuffers[key] = await audioContext.decodeAudioData(arrayBuffer);
+    } catch (error) {
+      console.log(`Failed to load ${key} sound:`, error);
+    }
+  }
+}
+
+function playSound(soundName, volume = 1, rate = 1) {
+  if (!audioBuffers[soundName]) return;
+
+  const source = audioContext.createBufferSource();
+  const gainNode = audioContext.createGain();
+
+  source.buffer = audioBuffers[soundName];
+  source.playbackRate.value = rate;
+  gainNode.gain.value = volume;
+
+  source.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  source.start(0);
+
+  return source;
+}
+
+function playBgMusic() {
+  if (!audioBuffers.bgMusic || bgMusicSource) return;
+
+  bgMusicSource = audioContext.createBufferSource();
+  const gainNode = audioContext.createGain();
+
+  bgMusicSource.buffer = audioBuffers.bgMusic;
+  bgMusicSource.loop = true;
+  gainNode.gain.value = 0.3;
+
+  bgMusicSource.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  bgMusicSource.start(0);
+}
+
+function stopBgMusic() {
+  if (bgMusicSource) {
+    bgMusicSource.stop();
+    bgMusicSource = null;
+  }
+}
+
+// Initialize audio
+loadSounds();
+
+// Initialize the game
+function init() {
+  // Create scene with fog for depth
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+  scene.fog = new THREE.Fog(0x87ceeb, 20, 60);
+
+  // Create camera with cinematic FOV
+  camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 8, 12);
+
+  // Create renderer with better quality
+  renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById("gameCanvas"),
+    antialias: true,
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
+
+  // Enhanced lighting
+  const ambientLight = new THREE.AmbientLight(0x8ec5fc, 0.5);
+  scene.add(ambientLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffeaa7, 1);
+  directionalLight.position.set(10, 15, 5);
+  directionalLight.castShadow = true;
+  directionalLight.shadow.camera.left = -25;
+  directionalLight.shadow.camera.right = 25;
+  directionalLight.shadow.camera.top = 25;
+  directionalLight.shadow.camera.bottom = -25;
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+  scene.add(directionalLight);
+
+  // Add rim light for cinematic effect
+  const rimLight = new THREE.DirectionalLight(0x74b9ff, 0.5);
+  rimLight.position.set(-5, 5, -5);
+  scene.add(rimLight);
+
+  // Create player with glow effect
+  const playerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const playerMaterial = new THREE.MeshPhongMaterial({
+    color: 0x00ff00,
+    emissive: 0x00ff00,
+    emissiveIntensity: 0.4,
+    shininess: 100,
+  });
+  player = new THREE.Mesh(playerGeometry, playerMaterial);
+  player.position.y = 0.5;
+  player.castShadow = true;
+  scene.add(player);
+
+  // Add player glow ring
+  const ringGeometry = new THREE.TorusGeometry(0.7, 0.05, 16, 50);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.1;
+  player.add(ring);
+
+  // Create ground with grid pattern
+  const groundGeometry = new THREE.PlaneGeometry(50, 50);
+  const groundMaterial = new THREE.MeshLambertMaterial({
+    color: 0x74b816,
+    emissive: 0x74b816,
+    emissiveIntensity: 0.1,
+  });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Add grid lines
+  const gridHelper = new THREE.GridHelper(50, 50, 0x82c91e, 0x82c91e);
+  gridHelper.material.opacity = 0.3;
+  gridHelper.material.transparent = true;
+  scene.add(gridHelper);
+
+  // Create initial orbs
+  spawnOrbs();
+
+  // Start game loop
+  animate();
+}
+
+// Spawn random orbs including bombs
+function spawnOrbs() {
+  orbs.forEach((orb) => scene.remove(orb));
+  orbs = [];
+
+  for (let i = 0; i < 15; i++) {
+    spawnSingleOrb();
+  }
+}
+
+// Spawn a single orb with enhanced visuals
+function spawnSingleOrb() {
+  const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  let colorName,
+    isBomb = false;
+
+  if (Math.random() < 0.2) {
+    colorName = "bomb";
+    isBomb = true;
+  } else {
+    colorName = colorNames[Math.floor(Math.random() * colorNames.length)];
+  }
+
+  const orbMaterial = new THREE.MeshPhongMaterial({
+    color: colors[colorName],
+    emissive: colors[colorName],
+    emissiveIntensity: isBomb ? 0.9 : 0.5,
+    shininess: 100,
+    transparent: true,
+    opacity: 0.95,
+  });
+
+  const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+  orb.position.x = (Math.random() - 0.5) * 40;
+  orb.position.y = 0.5;
+  orb.position.z = (Math.random() - 0.5) * 40;
+  orb.userData = { color: colorName, isBomb: isBomb };
+  orb.castShadow = true;
+
+  // Add particle ring around orbs
+  const particleRing = new THREE.TorusGeometry(0.4, 0.02, 16, 50);
+  const particleMaterial = new THREE.MeshBasicMaterial({
+    color: colors[colorName],
+    transparent: true,
+    opacity: 0.5,
+  });
+  const ring = new THREE.Mesh(particleRing, particleMaterial);
+  ring.rotation.x = Math.PI / 2;
+  orb.add(ring);
+
+  scene.add(orb);
+  orbs.push(orb);
+}
+
+// Setup camera and ML5 handpose
+async function setupCamera() {
+  const previewVideo = document.getElementById("previewVideo");
+  video = document.getElementById("video");
+
+  try {
+    document.getElementById("cameraText").textContent =
+      "Camera: Requesting access...";
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: 640, height: 480 },
+    });
+
+    previewVideo.srcObject = stream;
+    video.srcObject = stream;
+
+    cameraLoaded = true;
+    document.getElementById("cameraStatus").textContent = "✅";
+    document.getElementById("cameraText").textContent = "Camera: Ready";
+    document.getElementById("loadingStatus").innerHTML =
+      "<div>Loading AI hand pose model...</div>";
+    document.getElementById("modelText").textContent =
+      "Hand Pose Model: Loading...";
+
+    handpose = ml5.handpose(video, modelReady);
+    playBgMusic();
+
+    function modelReady() {
+      console.log("Handpose model loaded");
+      modelLoaded = true;
+      document.getElementById("modelStatus").textContent = "✅";
+      document.getElementById("modelText").textContent =
+        "Hand Pose Model: Ready";
+      document.getElementById("loadingStatus").innerHTML =
+        '<div style="color: #51cf66; font-size: 22px; font-weight: bold;">✅ Ready to play!</div>';
+
+      const startBtn = document.getElementById("startButton");
+      startBtn.disabled = false;
+      startBtn.textContent = "🚀 Start Game";
+
+      handpose.on("predict", (results) => {
+        predictions = results;
+        processHandGesture();
+      });
+    }
+  } catch (error) {
+    console.error("Error accessing camera:", error);
+    document.getElementById("loadingStatus").innerHTML =
+      '<div style="color: #ff6b6b;">❌ Camera access denied. Please allow camera access and refresh.</div>';
+    document.getElementById("cameraStatus").textContent = "❌";
+    document.getElementById("cameraText").textContent = "Camera: Access Denied";
+  }
+}
+
+// Process hand gestures
+function processHandGesture() {
+  if (predictions.length > 0 && gameStarted) {
+    const hand = predictions[0];
+    const landmarks = hand.landmarks;
+    const gesture = detectGesture(landmarks);
+    currentGesture = gesture;
+    // if (gesture !== lastGesture && gesture !== 'none') {
+    //     playSound('whoosh', 0.2);
+    //     lastGesture = gesture;
+    // }
+    document.getElementById("currentGesture").textContent = gesture.replace(
+      "_",
+      " "
+    );
+    movePlayer(gesture);
+  }
+}
+
+// Simple gesture detection
+function detectGesture(landmarks) {
+  const wrist = landmarks[0];
+  const indexTip = landmarks[8];
+  const indexPip = landmarks[6];
+  const middleTip = landmarks[12];
+
+  if (indexTip[1] < indexPip[1] - 20 && middleTip[1] > indexPip[1]) {
+    return "point_up";
+  }
+
+  const fingersUp = [
+    landmarks[4][1] < landmarks[3][1],
+    landmarks[8][1] < landmarks[6][1],
+    landmarks[12][1] < landmarks[10][1],
+    landmarks[16][1] < landmarks[14][1],
+    landmarks[20][1] < landmarks[18][1],
+  ].filter((f) => f).length;
+
+  if (fingersUp >= 4) {
+    return "open_palm";
+  }
+
+  if (indexTip[1] < indexPip[1] - 10) {
+    if (indexTip[0] < wrist[0] - 50) {
+      return "point_right";
+    } else if (indexTip[0] > wrist[0] + 50) {
+      return "point_left";
+    }
+  }
+
+  return "none";
+}
+
+// Move player based on gesture
+function movePlayer(gesture) {
+  const speed = 0.25;
+
+  switch (gesture) {
+    case "point_up":
+      player.position.z -= speed;
+      break;
+    case "open_palm":
+      player.position.z += speed;
+      break;
+    case "point_right":
+      player.position.x += speed;
+      break;
+    case "point_left":
+      player.position.x -= speed;
+      break;
+  }
+
+  player.position.x = Math.max(-20, Math.min(20, player.position.x));
+  player.position.z = Math.max(-20, Math.min(20, player.position.z));
+}
+
+// Check collisions
+function checkCollisions() {
+  for (let i = orbs.length - 1; i >= 0; i--) {
+    const orb = orbs[i];
+    const distance = player.position.distanceTo(orb.position);
+
+    if (distance < 0.8) {
+      scene.remove(orb);
+      orbs.splice(i, 1);
+
+      if (orb.userData.isBomb) {
+        score = Math.max(0, score - 5);
+        bombsHit++;
+        player.material.color.setHex(0xff0000);
+        player.material.emissive.setHex(0xff0000);
+        playSound("bomb", 0.7);
+        setTimeout(() => {
+          player.material.color.setHex(0x00ff00);
+          player.material.emissive.setHex(0x00ff00);
+        }, 200);
+      } else {
+        score += 10;
+        orbsCollected++;
+        player.material.color.setHex(0xffff00);
+        player.material.emissive.setHex(0xffff00);
+        const pitchMap = {
+          red: 1.0,
+          blue: 1.2,
+          green: 1.4,
+          yellow: 1.6,
+          purple: 1.8,
+        };
+        playSound("collect", 0.6, pitchMap[orb.userData.color] || 1.0);
+        setTimeout(() => {
+          player.material.color.setHex(0x00ff00);
+          player.material.emissive.setHex(0x00ff00);
+        }, 200);
+      }
+
+      document.getElementById("score").textContent = score;
+      document.getElementById("collected").textContent = orbsCollected;
+      spawnSingleOrb();
+    }
+  }
+}
+
+// Start game timer
+function startTimer() {
+  gameTime = 30;
+  updateTimerDisplay();
+
+  timerInterval = setInterval(() => {
+    gameTime--;
+    updateTimerDisplay();
+
+    if (gameTime <= 0) {
+      endGame();
+    }
+  }, 1000);
+}
+
+// Update timer display
+function updateTimerDisplay() {
+  const minutes = Math.floor(gameTime / 60);
+  const seconds = gameTime % 60;
+  document.getElementById("timer").textContent = `${minutes}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+
+  if (gameTime <= 10) {
+    document.getElementById("timer").style.color = "#ff6b6b";
+  } else {
+    document.getElementById("timer").style.color = "#ffd43b";
+  }
+
+  // Tick sound at 10 seconds
+  if (gameTime === 10) {
+    playSound("tick", 0.5);
+  }
+  // Urgent ticking from 5 seconds
+  if (gameTime <= 5 && gameTime > 0) {
+    playSound("tick", 0.4, 1.5);
+  }
+}
+
+// End game
+function endGame() {
+  gameStarted = false;
+  clearInterval(timerInterval);
+
+  document.getElementById("finalScore").textContent = score;
+  document.getElementById("finalCollected").textContent = orbsCollected;
+  document.getElementById("finalBombs").textContent = bombsHit;
+  document.getElementById("gameOverModal").style.display = "block";
+  stopBgMusic();
+  playSound("gameOver", 0.6);
+}
+
+// Reset game
+function resetGame() {
+  score = 0;
+  orbsCollected = 0;
+  bombsHit = 0;
+  gameTime = 30;
+
+  document.getElementById("score").textContent = "0";
+  document.getElementById("collected").textContent = "0";
+  document.getElementById("timer").textContent = "0:30";
+  player.position.set(0, 0.5, 0);
+  player.material.color.setHex(0x00ff00);
+  player.material.emissive.setHex(0x00ff00);
+
+  spawnOrbs();
+  document.getElementById("gameOverModal").style.display = "none";
+
+  gameStarted = true;
+  startTimer();
+  playBgMusic();
+}
+
+// Animation loop with cinematic camera movement
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (gameStarted) {
+    orbs.forEach((orb, index) => {
+      orb.position.y = 0.5 + Math.sin(Date.now() * 0.003 + index) * 0.3;
+      orb.rotation.y += 0.03;
+      orb.rotation.x += 0.01;
+
+      // Rotate particle ring
+      if (orb.children[0]) {
+        orb.children[0].rotation.z += 0.02;
+      }
+
+      if (orb.userData.isBomb) {
+        const pulse = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+        orb.material.emissiveIntensity = 0.6 + pulse * 0.6;
+      }
+    });
+
+    // Smooth camera follow with slight lag
+    camera.position.x += (player.position.x - camera.position.x) * 0.1;
+    camera.position.z += (player.position.z + 12 - camera.position.z) * 0.1;
+    camera.lookAt(player.position.x, 0, player.position.z);
+
+    // Rotate player's ring
+    if (player.children[0]) {
+      player.children[0].rotation.z += 0.05;
+    }
+
+    checkCollisions();
+  }
+
+  renderer.render(scene, camera);
+}
+
+// Start game
+document.getElementById("startButton").addEventListener("click", () => {
+  console.log("Game started");
+
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("ui").style.display = "block";
+  document.getElementById("instructions").style.display = "block";
+  document.getElementById("videoContainer").style.display = "block";
+  document.getElementById("gestureIndicator").style.display = "block";
+
+  gameStarted = true;
+
+  playSound("start", 0.5);
+  startTimer();
+});
+
+// Play again button
+document.getElementById("playAgainButton").addEventListener("click", () => {
+  resetGame();
+});
+
+// Handle window resize
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initialize the game
+init();
+
+// Start loading camera and model immediately
+setupCamera();
