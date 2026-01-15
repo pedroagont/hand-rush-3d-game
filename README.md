@@ -1,6 +1,10 @@
-# 🎮 Hand Rush
+# 🎮 Hand Rush: Gesture-Controlled 3D Game
 
-![Hand Rush](https://raw.githubusercontent.com/pedroagont/hand-rush-3d-game/refs/heads/main/icons/icon-512.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pedroagont/hand-rush-3d-game/refs/heads/main/icons/icon-512.png" alt="Hand Rush" width="400">
+</p>  
+
+---
 
 Powered by real-time hand tracking and WebGL, Hand Rush is an immersive, and touch-free gaming experience directly in the browser or as an installable PWA.
 
@@ -48,6 +52,7 @@ Powered by real-time hand tracking and WebGL, Hand Rush is an immersive, and tou
 
 ## 📱 Progressive Web App (PWA)
 Hand Rush is fully installable as a PWA.
+
 #### Supported:
 - ✅ Android (Chrome, Edge)
 - ✅ Desktop (Chrome, Edge)
